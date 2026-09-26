@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#132d1f">
+  <title>Home Run Hero</title>
+  <style>
+    :root{
+      --bg:#0c1912;
+      --panel:#15271c;
+      --panel-2:#1b3224;
+      --line:rgba(255,255,255,.14);
+      --text:#fffaf0;
+      --muted:#b9c7bb;
+      --accent:#f3b52e;
+      --accent-2:#e54b3f;
+      --green:#2c7a43;
+      --green-2:#226536;
+      --dirt:#ba7c4b;
+      --dirt-2:#9c6138;
+      --sky:#a9d7f2;
+    }
+
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    html, body {
+      margin:0;
+      min-height:100%;
+      background:
+        radial-gradient(circle at 50% -10%, #25462f 0, #14261b 34%, var(--bg) 72%);
+      color:var(--text);
+      font-family:Arial, Helvetica, sans-serif;
+      overscroll-behavior:none;
+    }
+
+    body {
+      padding:
+        max(12px, env(safe-area-inset-top))
+        max(12px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(12px, env(safe-area-inset-left));
+    }
+
+    .game-shell{
+      width:min(100%, 920px);
+      margin:0 auto;
+    }
+
+    .brand{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      margin:0 0 10px;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:clamp(24px, 7vw, 44px);
+      line-height:.92;
+      letter-spacing:-.05em;
+      text-transform:uppercase;
+      font-weight:1000;
+      text-shadow:0 3px 0 #000;
+    }
+
+    .brand h1 span{ color:var(--accent); }
+
+    .brand .tag{
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      text-align:right;
+      max-width:220px;
+    }
+
+    .scoreboard{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0,1fr));
+      gap:7px;
+      margin-bottom:8px;
+    }
+
+    .stat{
+      min-width:0;
+      background:rgba(21,39,28,.96);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 6px;
+      text-align:center;
+    }
+
+    .stat .label{
+      display:block;
+      color:var(--muted);
+      font-size:9px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      white-space:nowrap;
+    }
+
+    .stat .value{
+      display:block;
+      margin-top:2px;
+      font-size:20px;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .stadium-wrap{
+      position:relative;
+      overflow:hidden;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:#000;
+      box-shadow:0 18px 40px rgba(0,0,0,.28);
+      touch-action:manipulation;
+      user-select:none;
+    }
+
+    canvas{
+      display:block;
+      width:100%;
+      height:auto;
+      aspect-ratio:16/10;
+      background:#8bc3e6;
+      touch-action:manipulation;
+    }
+
+    .message{
+      position:absolute;
+      left:50%;
+      top:14px;
+      transform:translateX(-50%);
+      max-width:calc(100% - 24px);
+      padding:8px 13px;
+      border-radius:999px;
+      background:rgba(6,12,8,.77);
+      border:1px solid rgba(255,255,255,.15);
+      color:#fff;
+      font-size:clamp(12px,3vw,15px);
+      font-weight:900;
+      letter-spacing:.03em;
+      text-align:center;
+      white-space:nowrap;
+      pointer-events:none;
+      backdrop-filter:blur(4px);
+    }
+
+    .message.good{ background:rgba(39,111,56,.88); }
+    .message.bad{ background:rgba(137,44,38,.88); }
+    .message.hot{ background:rgba(194,115,16,.92); }
+
+    .controls{
+      display:grid;
+      grid-template-columns:1fr 1.35fr;
+      gap:9px;
+      margin-top:10px;
+    }
+
+    button{
+      appearance:none;
+      border:0;
+      min-height:58px;
+      border-radius:14px;
+      font:inherit;
+      font-weight:1000;
+      letter-spacing:.04em;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+
+    button:focus-visible{
+      outline:3px solid #fff;
+      outline-offset:2px;
+    }
+
+    #pitchBtn{
+      background:var(--panel-2);
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+
+    #swingBtn{
+      color:#201400;
+      background:linear-gradient(#ffd85a,#efa818);
+      box-shadow:inset 0 -4px 0 rgba(114,72,0,.24);
+      font-size:18px;
+    }
+
+    #swingBtn:active:not(:disabled),
+    #pitchBtn:active:not(:disabled),
+    #restartBtn:active{
+      transform:translateY(2px);
+    }
+
+    button:disabled{
+      opacity:.42;
+      cursor:default;
+      transform:none !important;
+    }
+
+    .bottom{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 180px;
+      gap:9px;
+      margin-top:9px;
+    }
+
+    .play-card, .bases-card{
+      background:rgba(21,39,28,.96);
+      border:1px solid var(--line);
+      border-radius:13px;
+      padding:11px 12px;
+    }
+
+    .small-label{
+      color:var(--muted);
+      font-size:9px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      margin-bottom:5px;
+      font-weight:800;
+    }
+
+    #lastPlay{
+      min-height:39px;
+      font-size:14px;
+      line-height:1.35;
+      font-weight:700;
+    }
+
+    .help{
+      color:var(--muted);
+      font-size:11px;
+      margin-top:8px;
+      line-height:1.35;
+    }
+
+    #restartBtn{
+      width:100%;
+      min-height:42px;
+      margin-top:9px;
+      color:var(--text);
+      background:#243b2b;
+      border:1px solid var(--line);
+      font-size:12px;
+    }
+
+    .diamond{
+      position:relative;
+      width:116px;
+      height:92px;
+      margin:5px auto 1px;
+    }
+
+    .base{
+      position:absolute;
+      width:20px;
+      height:20px;
+      border:2px solid #d7dfd5;
+      background:#5b6e60;
+      transform:rotate(45deg);
+      transition:.15s ease;
+    }
+
+    .base.on{
+      background:var(--accent);
+      border-color:#fff3be;
+      box-shadow:0 0 14px rgba(243,181,46,.55);
+    }
+
+    .base.b1{right:11px; top:38px;}
+    .base.b2{left:48px; top:4px;}
+    .base.b3{left:11px; top:38px;}
+    .home{
+      position:absolute;
+      left:47px;
+      bottom:0;
+      width:22px;
+      height:17px;
+      background:#f6f0df;
+      clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);
+    }
+
+    .mobile-hint{
+      display:none;
+      margin-top:8px;
+      color:var(--muted);
+      text-align:center;
+      font-size:11px;
+    }
+
+    @media (max-width:620px){
+      body{padding-left:8px;padding-right:8px;}
+      .brand{align-items:center;}
+      .brand .tag{display:none;}
+      .scoreboard{gap:5px;}
+      .stat{padding:7px 3px;border-radius:8px;}
+      .stat .label{font-size:8px; letter-spacing:.06em;}
+      .stat .value{font-size:18px;}
+      .bottom{grid-template-columns:1fr 130px;}
+      .bases-card{padding-left:6px;padding-right:6px;}
+      .diamond{transform:scale(.88); transform-origin:center top; margin-bottom:-8px;}
+      .mobile-hint{display:block;}
+    }
+
+    @media (max-width:390px){
+      .scoreboard{grid-template-columns:repeat(5, minmax(0,1fr));}
+      .stat .label{font-size:7px;}
+      .stat .value{font-size:17px;}
+      .controls{grid-template-columns:.9fr 1.35fr;}
+      button{min-height:56px;}
+      .bottom{grid-template-columns:1fr 112px;}
+      .diamond{transform:scale(.78); margin-left:-2px;}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *, *::before, *::after{
+        scroll-behavior:auto !important;
+        animation:none !important;
+        transition:none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game-shell">
+    <div class="brand">
+      <h1>Home Run <span>Hero</span></h1>
+      <p class="tag">A tiny old-school browser baseball game. Three outs. Score as many runs as you can.</p>
+    </div>
+
+    <section class="scoreboard" aria-label="Scoreboard">
+      <div class="stat"><span class="label">Runs</span><span class="value" id="runs">0</span></div>
+      <div class="stat"><span class="label">Outs</span><span class="value" id="outs">0</span></div>
+      <div class="stat"><span class="label">Strikes</span><span class="value" id="strikes">0</span></div>
+      <div class="stat"><span class="label">Hits</span><span class="value" id="hits">0</span></div>
+      <div class="stat"><span class="label">Best</span><span class="value" id="best">0</span></div>
+    </section>
+
+    <section class="stadium-wrap" id="stadium" aria-label="Baseball field. Tap the field while a pitch is coming to swing.">
+      <canvas id="gameCanvas" width="800" height="500"></canvas>
+      <div id="message" class="message">Tap PITCH to begin</div>
+    </section>
+
+    <div class="controls">
+      <button id="pitchBtn" type="button">PITCH</button>
+      <button id="swingBtn" type="button" disabled>SWING!</button>
+    </div>
+
+    <div class="mobile-hint">On a phone, you can tap the field itself to swing.</div>
+
+    <section class="bottom">
+      <div class="play-card">
+        <div class="small-label">Last play</div>
+        <div id="lastPlay" aria-live="polite">Step into the box and tap PITCH.</div>
+        <div class="help">Timing is everything: swing as the ball reaches the plate. Desktop: Space = swing, Enter = pitch.</div>
+        <button id="restartBtn" type="button">RESTART GAME</button>
+      </div>
+
+      <div class="bases-card">
+        <div class="small-label" style="text-align:center">Bases</div>
+        <div class="diamond" aria-label="Base runners">
+          <div id="base2" class="base b2"></div>
+          <div id="base1" class="base b1"></div>
+          <div id="base3" class="base b3"></div>
+          <div class="home"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+  const stadium = document.getElementById("stadium");
+  const pitchBtn = document.getElementById("pitchBtn");
+  const swingBtn = document.getElementById("swingBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const runsEl = document.getElementById("runs");
+  const outsEl = document.getElementById("outs");
+  const strikesEl = document.getElementById("strikes");
+  const hitsEl = document.getElementById("hits");
+  const bestEl = document.getElementById("best");
+  const lastPlayEl = document.getElementById("lastPlay");
+  const messageEl = document.getElementById("message");
+  const baseEls = [
+    document.getElementById("base1"),
+    document.getElementById("base2"),
+    document.getElementById("base3")
+  ];
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  let runs = 0;
+  let outs = 0;
+  let strikes = 0;
+  let hits = 0;
+  let best = Number(localStorage.getItem("hrh-best") || 0);
+  let bases = [false, false, false];
+
+  let gameOver = false;
+  let pitch = null;
+  let hitBall = null;
+  let batterSwing = 0;
+  let raf = 0;
+  let lastFrame = performance.now();
+  let crowdPulse = 0;
+
+  const mound = { x: W * 0.5, y: H * 0.36 };
+  const plate = { x: W * 0.50, y: H * 0.81 };
+  const batterX = W * 0.62;
+  const batterY = H * 0.79;
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function setMessage(text, type = "") {
+    messageEl.textContent = text;
+    messageEl.className = "message" + (type ? " " + type : "");
+  }
+
+  function updateUI() {
+    runsEl.textContent = runs;
+    outsEl.textContent = outs;
+    strikesEl.textContent = strikes;
+    hitsEl.textContent = hits;
+    bestEl.textContent = best;
+
+    baseEls.forEach((el, i) => {
+      el.classList.toggle("on", !!bases[i]);
+    });
+
+    pitchBtn.disabled = !!pitch || !!hitBall || gameOver;
+    swingBtn.disabled = !pitch || gameOver;
+  }
+
+  function resetGame() {
+    runs = 0;
+    outs = 0;
+    strikes = 0;
+    hits = 0;
+    bases = [false, false, false];
+    gameOver = false;
+    pitch = null;
+    hitBall = null;
+    batterSwing = 0;
+    lastPlayEl.textContent = "Step into the box and tap PITCH.";
+    setMessage("Tap PITCH to begin");
+    updateUI();
+    startLoop();
+  }
+
+  function startLoop() {
+    if (!raf) {
+      lastFrame = performance.now();
+      raf = requestAnimationFrame(loop);
+    }
+  }
+
+  function startPitch() {
+    if (pitch || hitBall || gameOver) return;
+
+    const now = performance.now();
+    const speed = 820 + Math.random() * 430;
+    const breakAmount = (Math.random() - 0.5) * 78;
+    const drop = (Math.random() - 0.5) * 20;
+
+    pitch = {
+      start: now,
+      duration: speed,
+      breakAmount,
+      endX: plate.x + (Math.random() - 0.5) * 32,
+      endY: plate.y + drop,
+      resolved: false
+    };
+
+    batterSwing = 0;
+    setMessage("HERE IT COMES...");
+    lastPlayEl.textContent = "Pitch on the way.";
+    updateUI();
+    startLoop();
+  }
+
+  function getPitchState(now) {
+    if (!pitch) return null;
+
+    const rawT = clamp((now - pitch.start) / pitch.duration, 0, 1);
+    const t = rawT * rawT * (3 - 2 * rawT);
+    const curve = Math.sin(rawT * Math.PI) * pitch.breakAmount;
+
+    return {
+      rawT,
+      x: mound.x + (pitch.endX - mound.x) * t + curve,
+      y: mound.y + (pitch.endY - mound.y) * t,
+      r: 5 + rawT * 8
+    };
+  }
+
+  function addStrike(reason) {
+    strikes++;
+
+    if (strikes >= 3) {
+      strikes = 0;
+      outs++;
+      lastPlayEl.textContent = reason + " Strike three — you're out.";
+      setMessage("STRIKEOUT!", "bad");
+
+      if (outs >= 3) {
+        endGame();
+      }
+    } else {
+      lastPlayEl.textContent = reason + " Strike " + strikes + ".";
+      setMessage("STRIKE!", "bad");
+    }
+
+    updateUI();
+  }
+
+  function endGame() {
+    gameOver = true;
+    pitch = null;
+    hitBall = null;
+
+    if (runs > best) {
+      best = runs;
+      localStorage.setItem("hrh-best", String(best));
+    }
+
+    setMessage("GAME OVER — " + runs + (runs === 1 ? " RUN" : " RUNS"), "hot");
+    lastPlayEl.textContent = "Three outs. Final score: " + runs + ". Tap RESTART GAME to play again.";
+    updateUI();
+  }
+
+  function advanceRunners(basesTaken) {
+    const newBases = [false, false, false];
+    let scored = 0;
+
+    for (let i = 2; i >= 0; i--) {
+      if (!bases[i]) continue;
+      const destination = i + basesTaken;
+      if (destination >= 3) scored++;
+      else newBases[destination] = true;
+    }
+
+    if (basesTaken >= 4) scored++;
+    else newBases[basesTaken - 1] = true;
+
+    bases = newBases;
+    runs += scored;
+
+    if (runs > best) {
+      best = runs;
+      localStorage.setItem("hrh-best", String(best));
+    }
+
+    return scored;
+  }
+
+  function resolveHit(result, now, timing, s) {
+    let basesTaken = 0;
+
+    if (result === "SINGLE") basesTaken = 1;
+    if (result === "DOUBLE") basesTaken = 2;
+    if (result === "TRIPLE") basesTaken = 3;
+    if (result === "HOME RUN") basesTaken = 4;
+
+    const scored = advanceRunners(basesTaken);
+    hits++;
+    strikes = 0;
+
+    const direction = s.x < plate.x ? -1 : 1;
+    const quality =
+      result === "HOME RUN" ? 1 :
+      result === "TRIPLE" ? 0.90 :
+      result === "DOUBLE" ? 0.78 : 0.64;
+
+    hitBall = {
+      start: now,
+      duration: 920,
+      result,
+      quality,
+      direction,
+      startX: plate.x + 8,
+      startY: plate.y - 10
+    };
+
+    const runText = scored ? " +" + scored + (scored === 1 ? " RUN" : " RUNS") : "";
+    setMessage(result + runText, result === "HOME RUN" ? "hot" : "good");
+    lastPlayEl.textContent =
+      result + "!" +
+      (scored ? " " + scored + (scored === 1 ? " run scores." : " runs score.") : "");
+
+    updateUI();
+  }
+
+  function swing() {
+    if (!pitch || gameOver || pitch.resolved) return;
+
+    const now = performance.now();
+    const s = getPitchState(now);
+    pitch.resolved = true;
+    batterSwing = 1;
+
+    const ideal = 0.915;
+    const timing = Math.abs(s.rawT - ideal);
+    const luck = Math.random();
+
+    if (s.rawT < 0.68 || s.rawT > 1) {
+      pitch = null;
+      addStrike("Swing and a miss.");
+      return;
+    }
+
+    let result;
+
+    if (timing < 0.028) {
+      result = luck < 0.72 ? "HOME RUN" : "TRIPLE";
+    } else if (timing < 0.060) {
+      result = luck < 0.43 ? "HOME RUN" : (luck < 0.80 ? "DOUBLE" : "TRIPLE");
+    } else if (timing < 0.105) {
+      result = luck < 0.58 ? "DOUBLE" : (luck < 0.91 ? "SINGLE" : "FOUL");
+    } else if (timing < 0.145) {
+      result = luck < 0.50 ? "SINGLE" : (luck < 0.79 ? "FOUL" : "OUT");
+    } else {
+      result = luck < 0.58 ? "FOUL" : "OUT";
+    }
+
+    if (result === "FOUL") {
+      if (strikes < 2) strikes++;
+      pitch = null;
+      setMessage("FOUL BALL", "bad");
+      lastPlayEl.textContent = "Foul ball. Stay alive.";
+      updateUI();
+      return;
+    }
+
+    if (result === "OUT") {
+      pitch = null;
+      strikes = 0;
+      outs++;
+      setMessage("CAUGHT!", "bad");
+      lastPlayEl.textContent = "Ball in play — caught for an out.";
+      if (outs >= 3) endGame();
+      updateUI();
+      return;
+    }
+
+    pitch = null;
+    resolveHit(result, now, timing, s);
+  }
+
+  function resolveTakenPitch(now) {
+    if (!pitch || pitch.resolved) return;
+
+    const s = getPitchState(now);
+
+    if (s.rawT >= 1) {
+      pitch.resolved = true;
+      pitch = null;
+      addStrike("Called strike.");
+    }
+  }
+
+  function drawBackground() {
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.38);
+    sky.addColorStop(0, "#9ed0ef");
+    sky.addColorStop(1, "#e1f0f8");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.40);
+
+    ctx.fillStyle = "#243344";
+    ctx.fillRect(0, H * 0.25, W, H * 0.09);
+
+    for (let i = 0; i < 31; i++) {
+      const x = 8 + i * 27;
+      const y = H * 0.285 + Math.sin(i * 1.7 + crowdPulse) * 3;
+      ctx.fillStyle = i % 3 === 0 ? "#f2ca68" : (i % 3 === 1 ? "#e87961" : "#dce6ec");
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#2b7540";
+    ctx.fillRect(0, H * 0.34, W, H * 0.66);
+
+    for (let y = H * 0.34; y < H; y += 30) {
+      ctx.fillStyle = (Math.floor(y / 30) % 2) ? "#286e3b" : "#327d46";
+      ctx.fillRect(0, y, W, 30);
+    }
+
+    ctx.fillStyle = "#b97c4c";
+    ctx.beginPath();
+    ctx.moveTo(W * 0.50, H * 0.38);
+    ctx.lineTo(W * 0.13, H * 0.91);
+    ctx.lineTo(W * 0.87, H * 0.91);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#2b7540";
+    ctx.beginPath();
+    ctx.moveTo(W * 0.50, H * 0.43);
+    ctx.lineTo(W * 0.25, H * 0.82);
+    ctx.lineTo(W * 0.75, H * 0.82);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = "#f6f0df";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(plate.x, plate.y);
+    ctx.lineTo(W * 0.10, H * 0.96);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(plate.x, plate.y);
+    ctx.lineTo(W * 0.90, H * 0.96);
+    ctx.stroke();
+
+    ctx.fillStyle = "#c69b72";
+    ctx.beginPath();
+    ctx.ellipse(mound.x, mound.y, 44, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#f7efe0";
+    ctx.fillRect(mound.x - 11, mound.y - 3, 22, 4);
+
+    ctx.fillStyle = "#f8f2e5";
+    ctx.beginPath();
+    ctx.moveTo(plate.x - 15, plate.y - 7);
+    ctx.lineTo(plate.x + 15, plate.y - 7);
+    ctx.lineTo(plate.x + 12, plate.y + 8);
+    ctx.lineTo(plate.x, plate.y + 15);
+    ctx.lineTo(plate.x - 12, plate.y + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,.7)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(plate.x - 34, plate.y - 76, 68, 72);
+  }
+
+  function drawPitcher(now) {
+    const motion = pitch ? Math.sin(clamp((now - pitch.start) / 220, 0, 1) * Math.PI) : 0;
+    const x = mound.x;
+    const y = mound.y - 34;
+
+    ctx.strokeStyle = "#18221d";
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(x, y - 18);
+    ctx.lineTo(x, y + 18);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y + 14);
+    ctx.lineTo(x - 11, y + 37);
+    ctx.moveTo(x, y + 14);
+    ctx.lineTo(x + 12, y + 37);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y - 8);
+    ctx.lineTo(x - 18, y + 2 - motion * 18);
+    ctx.moveTo(x, y - 8);
+    ctx.lineTo(x + 19, y - 5 + motion * 5);
+    ctx.stroke();
+
+    ctx.fillStyle = "#f1b28b";
+    ctx.beginPath();
+    ctx.arc(x, y - 31, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#223c67";
+    ctx.beginPath();
+    ctx.arc(x, y - 34, 11, Math.PI, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawBatter() {
+    batterSwing *= 0.88;
+
+    const x = batterX;
+    const y = batterY;
+    const swingAngle = -0.75 + batterSwing * 1.72;
+
+    ctx.strokeStyle = "#17231d";
+    ctx.lineWidth = 9;
+    ctx.lineCap = "round";
+
+    ctx.beginPath();
+    ctx.moveTo(x, y - 62);
+    ctx.lineTo(x, y - 20);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, y - 22);
+    ctx.lineTo(x - 13, y + 8);
+    ctx.moveTo(x, y - 22);
+    ctx.lineTo(x + 15, y + 8);
+    ctx.stroke();
+
+    ctx.fillStyle = "#efb08b";
+    ctx.beginPath();
+    ctx.arc(x, y - 79, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#b4332f";
+    ctx.beginPath();
+    ctx.arc(x, y - 82, 13, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    const shoulderX = x;
+    const shoulderY = y - 55;
+    const batLen = 68;
+
+    ctx.save();
+    ctx.translate(shoulderX, shoulderY);
+    ctx.rotate(swingAngle);
+    ctx.strokeStyle = "#d9a660";
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(3, 0);
+    ctx.lineTo(-batLen, 0);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.strokeStyle = "#17231d";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 50);
+    ctx.lineTo(x - 16, y - 43);
+    ctx.stroke();
+  }
+
+  function drawBall(now) {
+    if (pitch) {
+      const s = getPitchState(now);
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#d94b45";
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 0.64, -0.8, 0.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 0.64, 2.35, 3.95);
+      ctx.stroke();
+    }
+
+    if (hitBall) {
+      const t = clamp((now - hitBall.start) / hitBall.duration, 0, 1);
+
+      const endX = plate.x + hitBall.direction * (150 + hitBall.quality * 230);
+      const endY = H * (0.47 - hitBall.quality * 0.24);
+      const x = hitBall.startX + (endX - hitBall.startX) * t;
+      const arch = Math.sin(t * Math.PI) * (120 + hitBall.quality * 120);
+      const y = hitBall.startY + (endY - hitBall.startY) * t - arch;
+
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(x, y, 8 - t * 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (t >= 1) {
+        hitBall = null;
+        setMessage(gameOver ? "GAME OVER" : "Tap PITCH for the next batter");
+        updateUI();
+      }
+    }
+  }
+
+  function draw(now) {
+    drawBackground();
+    drawPitcher(now);
+    drawBatter();
+    drawBall(now);
+
+    if (gameOver) {
+      ctx.fillStyle = "rgba(4,10,6,.58)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#fff";
+      ctx.font = "900 46px Arial";
+      ctx.fillText("GAME OVER", W / 2, H * 0.45);
+      ctx.fillStyle = "#ffd050";
+      ctx.font = "900 34px Arial";
+      ctx.fillText(runs + (runs === 1 ? " RUN" : " RUNS"), W / 2, H * 0.54);
+    }
+  }
+
+  function loop(now) {
+    raf = 0;
+    const dt = Math.min(40, now - lastFrame);
+    lastFrame = now;
+    crowdPulse += dt * 0.004;
+
+    resolveTakenPitch(now);
+    draw(now);
+
+    if (pitch || hitBall || batterSwing > 0.015 || !gameOver) {
+      raf = requestAnimationFrame(loop);
+    }
+  }
+
+  pitchBtn.addEventListener("click", startPitch);
+  swingBtn.addEventListener("click", swing);
+  restartBtn.addEventListener("click", resetGame);
+
+  stadium.addEventListener("pointerdown", (event) => {
+    if (pitch && !gameOver) {
+      event.preventDefault();
+      swing();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.code === "Space") {
+      event.preventDefault();
+      swing();
+    } else if (event.code === "Enter") {
+      event.preventDefault();
+      startPitch();
+    }
+  });
+
+  window.addEventListener("resize", () => draw(performance.now()), { passive: true });
+
+  updateUI();
+  draw(performance.now());
+})();
+</script>
+</body>
+</html>
